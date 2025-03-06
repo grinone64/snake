@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Snake Game</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        canvas { border: 1px solid black; }
+        #score { font-size: 24px; margin: 10px; }
+    </style>
+</head>
+<body>
+    <div id="score">DEJ: </div>
+    <div id="game-container">
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+    </div>
+    <img id="snakeHead" src="head.png" style="display: none;">
+    <script>
+        const flags = ['🇵🇱', '🇺🇸', '🇬🇧', '🇩🇪', '🇫🇷', '🇮🇹', '🇪🇸', '🇯🇵', '🇨🇳', '🇧🇷', '🇦🇷', '🇦🇺', '🇨🇦', '🇮🇳', '🇲🇽'];
+        let collectedFlags = [];
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const snakeHeadImg = document.getElementById('snakeHead');
+        
+        // Set canvas size
+        canvas.width = 600;
+        canvas.height = 600;
+        const tileSize = 30;
+        
+        // Initialize snake
+        let snake = [
+            {x: 10, y: 10}
+        ];
+        
+        // Initialize food with random flag
+        let food = {
+            x: Math.floor(Math.random() * (canvas.width/tileSize)),
+            y: Math.floor(Math.random() * (canvas.height/tileSize)),
+            flag: flags[Math.floor(Math.random() * flags.length)]
+        };
+        
+        let dx = 0;
+        let dy = 0;
+        
+        // Initialize enemy
+        let enemy = {
+            x: Math.floor(Math.random() * (canvas.width/tileSize)),
+            y: Math.floor(Math.random() * (canvas.height/tileSize)),
+            dx: Math.random() < 0.5 ? 1 : -1, // Initial horizontal direction
+            dy: Math.random() < 0.5 ? 1 : -1,  // Initial vertical direction
+            flag: '🇷🇺' // Russian flag
+        };
+        
+        // Game controls
+        document.addEventListener('keydown', function(event) {
+            switch(event.key) {
+                case 'ArrowUp': if(dy !== 1) { dx = 0; dy = -1; } break;
+                case 'ArrowDown': if(dy !== -1) { dx = 0; dy = 1; } break;
+                case 'ArrowLeft': if(dx !== 1) { dx = -1; dy = 0; } break;
+                case 'ArrowRight': if(dx !== -1) { dx = 1; dy = 0; } break;
+            }
+        });
+        
+        function gameLoop() {
+            // Move snake
+            const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+            snake.unshift(head);
+            
+            // Check if snake ate food
+            if(head.x === food.x && head.y === food.y) {
+                collectedFlags.push(food.flag);
+                scoreElement.textContent = `DEJ: ${collectedFlags.join(' ')}`;
+                food = {
+                    x: Math.floor(Math.random() * (canvas.width/tileSize)),
+                    y: Math.floor(Math.random() * (canvas.height/tileSize)),
+                    flag: flags[Math.floor(Math.random() * flags.length)]
+                };
+            } else {
+                snake.pop();
+            }
+            
+            // Move enemy
+            enemy.x += enemy.dx;
+            enemy.y += enemy.dy;
+            
+            // Enemy collision with walls
+            if (enemy.x < 0 || enemy.x >= canvas.width/tileSize) {
+                enemy.dx = -enemy.dx;
+            }
+            if (enemy.y < 0 || enemy.y >= canvas.height/tileSize) {
+                enemy.dy = -enemy.dy;
+            }
+            
+            // Check if enemy collides with snake
+            let enemyCollision = false;
+            for (let i = 0; i < snake.length; i++) {
+                if (enemy.x === snake[i].x && enemy.y === snake[i].y) {
+                    enemyCollision = true;
+                    break;
+                }
+            }
+            
+            if (enemyCollision) {
+                snake.pop(); // Remove tail segment
+                if (snake.length === 0) {
+                    // Game over if snake is completely gone
+                    alert('Game Over! Wąż zdefraudował za mało, zostal odstrzelony: ' + collectedFlags.join(' '));
+                    snake = [{x: 10, y: 10}];
+                    dx = 0;
+                    dy = 0;
+                    collectedFlags = [];
+                    scoreElement.textContent = 'DEJ: ';
+                    return; // Stop current game loop
+                }
+            }
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw snake
+            ctx.fillStyle = 'green';
+            snake.forEach((segment, index) => {
+                if (index === 0) {
+                    ctx.drawImage(snakeHeadImg, segment.x * tileSize, segment.y * tileSize, tileSize-2, tileSize-2);
+                } else {
+                    ctx.fillRect(segment.x * tileSize, segment.y * tileSize, tileSize-2, tileSize-2);
+                }
+            });
+            
+            // Draw food (flag)
+            ctx.font = `${tileSize}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(
+                food.flag,
+                food.x * tileSize + tileSize/2,
+                food.y * tileSize + tileSize/2
+            );
+            
+            // Draw enemy (flag)
+            ctx.font = `${tileSize}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(
+                enemy.flag,
+                enemy.x * tileSize + tileSize/2,
+                enemy.y * tileSize + tileSize/2
+            );
+            
+            // Game over conditions
+            if(head.x < 0 || head.x >= canvas.width/tileSize || 
+               head.y < 0 || head.y >= canvas.height/tileSize ||
+               snake.slice(1).some(segment => segment.x === head.x && segment.y === head.y)) {
+                alert('Game Over! Zdefraudowane fundusze: ' + collectedFlags.join(' '));
+                snake = [{x: 10, y: 10}];
+                dx = 0;
+                dy = 0;
+                collectedFlags = [];
+                scoreElement.textContent = 'DEJ: ';
+            } else if (head.x === enemy.x && head.y === enemy.y) {
+                // Player loses half of the collected flags
+                collectedFlags = collectedFlags.slice(0, Math.floor(collectedFlags.length / 2));
+                scoreElement.textContent = `DEJ: ${collectedFlags.join(' ')}`;
+
+                // Reposition the enemy
+                enemy.x = Math.floor(Math.random() * (canvas.width/tileSize));
+                enemy.y = Math.floor(Math.random() * (canvas.height/tileSize));
+                enemy.dx = Math.random() < 0.5 ? 1 : -1;
+                enemy.dy = Math.random() < 0.5 ? 1 : -1;
+            }
+            
+            setTimeout(gameLoop, 100);
+        }
+        
+        gameLoop();
+    </script>
+</body>
+</html>
